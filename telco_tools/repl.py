@@ -15,7 +15,7 @@ from timeit import default_timer as timer
 from typing import Any, AnyStr, Callable, Dict, Iterable, List, Mapping, MutableMapping, Optional, Tuple, TypeVar, Union
 from urllib.request import build_opener
 
-import frida
+import telco
 from colorama import Fore, Style
 from prompt_toolkit import PromptSession
 from prompt_toolkit.completion import CompleteEvent, Completer, Completion
@@ -27,10 +27,10 @@ from prompt_toolkit.styles import Style as PromptToolkitStyle
 from pygments.lexers.javascript import JavascriptLexer
 from pygments.token import Token
 
-from frida_tools import _repl_magic
-from frida_tools.application import ConsoleApplication
-from frida_tools.cli_formatting import format_compiled, format_compiling, format_diagnostic
-from frida_tools.reactor import Reactor
+from telco_tools import _repl_magic
+from telco_tools.application import ConsoleApplication
+from telco_tools.cli_formatting import format_compiled, format_compiling, format_diagnostic
+from telco_tools.reactor import Reactor
 
 T = TypeVar("T")
 
@@ -41,11 +41,11 @@ class REPLApplication(ConsoleApplication):
         self._ready = threading.Event()
         self._stopping = threading.Event()
         self._errors = 0
-        self._completer = FridaCompleter(self)
+        self._completer = TelcoCompleter(self)
         self._cli = None
         self._last_change_id = 0
         self._compilers: Dict[str, CompilerContext] = {}
-        self._monitored_files: MutableMapping[Union[str, bytes], frida.FileMonitor] = {}
+        self._monitored_files: MutableMapping[Union[str, bytes], telco.FileMonitor] = {}
         self._autoperform = False
         self._autoperform_option = False
         self._autoreload = True
@@ -135,7 +135,7 @@ class REPLApplication(ConsoleApplication):
         )
         parser.add_argument(
             "--kill-on-exit",
-            help="kill the spawned program when Frida exits",
+            help="kill the spawned program when Telco exits",
             action="store_true",
             dest="kill_on_exit",
             default=False,
@@ -264,7 +264,7 @@ class REPLApplication(ConsoleApplication):
         else:
             self._unload_script()
 
-        with frida.Cancellable():
+        with telco.Cancellable():
             self._demonitor_all()
 
         if self._logfile is not None:
@@ -276,7 +276,7 @@ class REPLApplication(ConsoleApplication):
             self._device.kill(self._spawned_pid)
 
         if not self._quiet:
-            self._print("\nThank you for using Frida!")
+            self._print("\nThank you for using Telco!")
 
     def _load_script(self) -> None:
         if self._autoreload:
@@ -301,9 +301,9 @@ class REPLApplication(ConsoleApplication):
         if cmodule_code is not None:
             # TODO: Remove this hack once RPC implementation supports passing binary data in both directions.
             if isinstance(cmodule_code, bytes):
-                script.post({"type": "frida:cmodule-payload"}, data=cmodule_code)
+                script.post({"type": "telco:cmodule-payload"}, data=cmodule_code)
                 cmodule_code = None
-            script.exports_sync.frida_load_cmodule(cmodule_code, self._toolchain)
+            script.exports_sync.telco_load_cmodule(cmodule_code, self._toolchain)
 
         stage = "early" if self._target[0] == "file" and is_first_load else "late"
         try:
@@ -347,7 +347,7 @@ class REPLApplication(ConsoleApplication):
         if path is None or path in self._monitored_files or script_needs_compilation(path):
             return
 
-        monitor = frida.FileMonitor(path)
+        monitor = telco.FileMonitor(path)
         monitor.on("change", self._on_change)
         monitor.enable()
         self._monitored_files[path] = monitor
@@ -430,7 +430,7 @@ class REPLApplication(ConsoleApplication):
                 except JavaScriptError as e:
                     error = e.error
                     self._print(Style.BRIGHT + error["name"] + Style.RESET_ALL + ": " + error["message"])
-                except frida.InvalidOperationError:
+                except telco.InvalidOperationError:
                     return
             elif expression == "help":
                 self._do_magic("help")
@@ -447,7 +447,7 @@ class REPLApplication(ConsoleApplication):
                             expression = f"Java.performNow(() => {{ return {expression}\n/**/ }});"
                         if not self._exec_and_print(self._evaluate_expression, expression):
                             self._errors += 1
-                except frida.OperationCancelledError:
+                except telco.OperationCancelledError:
                     return
 
     def _get_confirmation(self, question: str, default_answer: bool = False) -> bool:
@@ -493,7 +493,7 @@ class REPLApplication(ConsoleApplication):
                 trimmed_stack = stack.split("\n")[message_len:-trim_amount]
                 if len(trimmed_stack) > 0:
                     output += "\n" + "\n".join(trimmed_stack)
-        except frida.InvalidOperationError:
+        except telco.InvalidOperationError:
             return success
         if output != "undefined":
             self._print(output)
@@ -503,15 +503,15 @@ class REPLApplication(ConsoleApplication):
         self._print(
             """\
      ____
-    / _  |   Frida {version} - A world-class dynamic instrumentation toolkit
+    / _  |   Telco {version} - A world-class dynamic instrumentation toolkit
    | (_| |
     > _  |   Commands:
    /_/ |_|       help      -> Displays the help system
    . . . .       object?   -> Display information about 'object'
    . . . .       exit/quit -> Exit
    . . . .
-   . . . .   More info at https://frida.re/docs/home/""".format(
-                version=frida.__version__
+   . . . .   More info at https://telco.re/docs/home/""".format(
+                version=telco.__version__
             )
         )
 
@@ -662,12 +662,12 @@ class REPLApplication(ConsoleApplication):
 
     def _evaluate_expression(self, expression: str) -> Tuple[str, bytes]:
         assert self._script is not None
-        result = self._script.exports_sync.frida_evaluate_expression(expression)
+        result = self._script.exports_sync.telco_evaluate_expression(expression)
         return self._parse_evaluate_result(result)
 
     def _evaluate_quick_command(self, tokens: List[str]) -> Tuple[str, bytes]:
         assert self._script is not None
-        result = self._script.exports_sync.frida_evaluate_quick_command(tokens)
+        result = self._script.exports_sync.telco_evaluate_quick_command(tokens)
         return self._parse_evaluate_result(result)
 
     def _parse_evaluate_result(self, result: Union[bytes, Mapping[Any, Any], Tuple[str, bytes]]) -> Tuple[str, bytes]:
@@ -715,7 +715,7 @@ class REPLApplication(ConsoleApplication):
 
         if self._codeshare_script is not None:
             raw_fragments.append(
-                self._wrap_user_script(f"/codeshare.frida.re/{self._codeshare_uri}.js", self._codeshare_script)
+                self._wrap_user_script(f"/codeshare.telco.re/{self._codeshare_uri}.js", self._codeshare_script)
             )
 
         for user_script in self._user_scripts:
@@ -750,7 +750,7 @@ class REPLApplication(ConsoleApplication):
                 script_id = next_script_id
                 next_script_id += 1
                 size = len(raw_fragment.encode("utf-8"))
-                fragments.append(f"{size} /frida/repl-{script_id}.js\n✄\n{raw_fragment}")
+                fragments.append(f"{size} /telco/repl-{script_id}.js\n✄\n{raw_fragment}")
 
         return "📦\n" + "\n✄\n".join(fragments)
 
@@ -804,20 +804,20 @@ const repl = new REPL();
 global.REPL = repl;
 
 const rpcExports = {
-fridaEvaluateExpression(expression) {
+telcoEvaluateExpression(expression) {
     return evaluate(() => (1, eval)(expression));
 },
-fridaEvaluateQuickCommand(tokens) {
+telcoEvaluateQuickCommand(tokens) {
     return evaluate(() => repl._invokeQuickCommand(tokens));
 },
-fridaLoadCmodule(code, toolchain) {
+telcoLoadCmodule(code, toolchain) {
     const cs = global.cs;
 
-    if (cs._frida_log === undefined)
-        cs._frida_log = new NativeCallback(onLog, 'void', ['pointer']);
+    if (cs._telco_log === undefined)
+        cs._telco_log = new NativeCallback(onLog, 'void', ['pointer']);
 
     if (code === null) {
-        recv('frida:cmodule-payload', (message, data) => {
+        recv('telco:cmodule-payload', (message, data) => {
             code = data;
         });
     }
@@ -874,16 +874,16 @@ function onLog(messagePtr) {
         name = os.path.basename(self._user_cmodule)
 
         return (
-            """static void frida_log (const char * format, ...);\n#line 1 "{name}"\n""".format(name=name)
+            """static void telco_log (const char * format, ...);\n#line 1 "{name}"\n""".format(name=name)
             + source
             + """\
-#line 1 "frida-repl-builtins.c"
+#line 1 "telco-repl-builtins.c"
 #include <glib.h>
 
-extern void _frida_log (const gchar * message);
+extern void _telco_log (const gchar * message);
 
 static void
-frida_log (const char * format,
+telco_log (const char * format,
            ...)
 {
   gchar * message;
@@ -893,7 +893,7 @@ frida_log (const char * format,
   message = g_strdup_vprintf (format, args);
   va_end (args);
 
-  _frida_log (message);
+  _telco_log (message);
 
   g_free (message);
 }
@@ -903,11 +903,11 @@ frida_log (const char * format,
     def _load_codeshare_script(self, uri: str) -> Optional[str]:
         trust_store = self._get_or_create_truststore()
 
-        project_url = f"https://codeshare.frida.re/api/project/{uri}/"
+        project_url = f"https://codeshare.telco.re/api/project/{uri}/"
         response_json = None
         try:
             request = build_opener()
-            request.addheaders = [("User-Agent", f"Frida v{frida.__version__} | {platform.platform()}")]
+            request.addheaders = [("User-Agent", f"Telco v{telco.__version__} | {platform.platform()}")]
             response = request.open(project_url)
             response_content = response.read().decode("utf-8")
             response_json = json.loads(response_content)
@@ -933,7 +933,7 @@ URL: {url}
                 author="@" + uri.split("/")[0],
                 slug=uri,
                 fingerprint=fingerprint,
-                url=f"https://codeshare.frida.re/@{uri}",
+                url=f"https://codeshare.telco.re/@{uri}",
             )
         )
 
@@ -1002,12 +1002,12 @@ URL: {url}
     def _migrate_old_config_file(self, name: str, new_path: str) -> bool:
         xdg_config_home = os.getenv("XDG_CONFIG_HOME")
         if xdg_config_home is not None:
-            old_file = os.path.exists(os.path.join(xdg_config_home, "frida", name))
+            old_file = os.path.exists(os.path.join(xdg_config_home, "telco", name))
             if os.path.isfile(old_file):
                 os.rename(old_file, new_path)
                 return True
 
-        old_file = os.path.join(os.path.expanduser("~"), ".frida", name)
+        old_file = os.path.join(os.path.expanduser("~"), ".telco", name)
         if os.path.isfile(old_file):
             os.rename(old_file, new_path)
             return True
@@ -1033,7 +1033,7 @@ class CompilerContext:
         self._autoreload = autoreload
         self._on_bundle_updated = on_bundle_updated
 
-        self.compiler = frida.Compiler()
+        self.compiler = telco.Compiler()
         self._bundle = None
 
     def get_bundle(self) -> str:
@@ -1060,7 +1060,7 @@ class CompilerContext:
         return self._bundle
 
 
-class FridaCompleter(Completer):
+class TelcoCompleter(Completer):
     def __init__(self, repl: REPLApplication) -> None:
         self._repl = repl
         self._lexer = JavascriptLexer()
@@ -1154,9 +1154,9 @@ class FridaCompleter(Completer):
                     if not self._pattern_matches(before_dot, key) or (key.startswith("_") and before_dot == ""):
                         continue
                     yield Completion(key, -len(before_dot))
-        except frida.InvalidOperationError:
+        except telco.InvalidOperationError:
             pass
-        except frida.OperationCancelledError:
+        except telco.OperationCancelledError:
             pass
         except Exception as e:
             self._repl._print(e)

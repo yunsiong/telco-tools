@@ -4,10 +4,10 @@ import sys
 from timeit import default_timer as timer
 from typing import Any, Dict, List, Optional
 
-import frida
+import telco
 
-from frida_tools.application import ConsoleApplication, await_ctrl_c
-from frida_tools.cli_formatting import format_compiled, format_compiling, format_diagnostic, format_error
+from telco_tools.application import ConsoleApplication, await_ctrl_c
+from telco_tools.cli_formatting import format_compiled, format_compiling, format_diagnostic, format_error
 
 
 def main() -> None:
@@ -41,7 +41,7 @@ class CompilerApplication(ConsoleApplication):
             "compression": "terser" if options.compress else "none",
         }
 
-        compiler = frida.Compiler()
+        compiler = telco.Compiler()
         self._compiler = compiler
 
         def on_compiler_finished() -> None:

@@ -1,5 +1,5 @@
 import { Buffer } from "buffer";
-import RemoteStreamController, { IncomingStream, Packet } from "frida-remote-stream";
+import RemoteStreamController, { IncomingStream, Packet } from "telco-remote-stream";
 import fs from "fs";
 import fsPath from "path";
 

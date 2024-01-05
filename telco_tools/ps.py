@@ -14,9 +14,9 @@ def main() -> None:
     except:
         pass
 
-    import _frida
+    import _telco
 
-    from frida_tools.application import ConsoleApplication
+    from telco_tools.application import ConsoleApplication
 
     class PSApplication(ConsoleApplication):
         def _add_options(self, parser: argparse.ArgumentParser) -> None:
@@ -239,7 +239,7 @@ def main() -> None:
                 result += ch
             return result
 
-    def compare_applications(a: _frida.Application, b: _frida.Application) -> int:
+    def compare_applications(a: _telco.Application, b: _telco.Application) -> int:
         a_is_running = a.pid != 0
         b_is_running = b.pid != 0
         if a_is_running == b_is_running:
@@ -254,7 +254,7 @@ def main() -> None:
         else:
             return 1
 
-    def compare_processes(a: _frida.Process, b: _frida.Process) -> int:
+    def compare_processes(a: _telco.Process, b: _telco.Process) -> int:
         a_has_icon = "icons" in a.parameters
         b_has_icon = "icons" in b.parameters
         if a_has_icon == b_has_icon:
@@ -269,7 +269,7 @@ def main() -> None:
         else:
             return 1
 
-    def compute_icon_width(item: Union[_frida.Application, _frida.Process]) -> int:
+    def compute_icon_width(item: Union[_telco.Application, _telco.Process]) -> int:
         for icon in item.parameters.get("icons", []):
             if icon["format"] == "png":
                 return 4

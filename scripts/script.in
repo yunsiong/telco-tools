@@ -4,7 +4,7 @@ from os.path import dirname, join, realpath
 import sys
 sys.path.insert(1, join(dirname(dirname(realpath(__file__))), '@pythondir@'))
 
-import frida_tools.@module@
+import telco_tools.@module@
 
 if __name__ == '__main__':
-    frida_tools.@module@.main()
+    telco_tools.@module@.main()

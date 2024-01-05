@@ -6,12 +6,12 @@ import time
 from threading import Event, Thread
 from typing import AnyStr, List, MutableMapping, Optional
 
-import frida
+import telco
 from colorama import Fore, Style
 
-from frida_tools.application import ConsoleApplication
-from frida_tools.stream_controller import DisposedException, StreamController
-from frida_tools.units import bytes_to_megabytes
+from telco_tools.application import ConsoleApplication
+from telco_tools.stream_controller import DisposedException, StreamController
+from telco_tools.units import bytes_to_megabytes
 
 
 def main() -> None:
@@ -33,7 +33,7 @@ class PushApplication(ConsoleApplication):
         self._local_paths = paths[:-1]
         self._remote_path = paths[-1]
 
-        self._script: Optional[frida.core.Script] = None
+        self._script: Optional[telco.core.Script] = None
         self._stream_controller: Optional[StreamController] = None
         self._total_bytes = 0
         self._time_started: Optional[float] = None

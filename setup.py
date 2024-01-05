@@ -5,29 +5,29 @@ import os
 
 from setuptools import setup
 
-pkg_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "frida_tools"))
+pkg_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), "telco_tools"))
 
 agents = glob.glob(os.path.join(pkg_dir, "*_agent.*"))
 assert len(agents) > 0, "Agents not compiled; run “npm install && npm run build” in agents/*/"
 
 setup(
-    name="frida-tools",
+    name="telco-tools",
     version="12.3.0",
-    description="Frida CLI tools",
-    long_description="CLI tools for [Frida](https://frida.re).",
+    description="Telco CLI tools",
+    long_description="CLI tools for [Telco](https://telco.re).",
     long_description_content_type="text/markdown",
-    author="Frida Developers",
-    author_email="oleavr@frida.re",
-    url="https://frida.re",
+    author="Telco Developers",
+    author_email="oleavr@telco.re",
+    url="https://telco.re",
     install_requires=[
         "colorama >= 0.2.7, < 1.0.0",
-        "frida >= 16.0.9, < 17.0.0",
+        "telco >= 16.0.9, < 17.0.0",
         "prompt-toolkit >= 2.0.0, < 4.0.0",
         "pygments >= 2.0.2, < 3.0.0",
     ],
     license="wxWindows Library Licence, Version 3.1",
     zip_safe=False,
-    keywords="frida debugger dynamic instrumentation inject javascript windows macos linux ios iphone ipad android qnx",
+    keywords="telco debugger dynamic instrumentation inject javascript windows macos linux ios iphone ipad android qnx",
     classifiers=[
         "Development Status :: 5 - Production/Stable",
         "Environment :: Console",
@@ -49,27 +49,27 @@ setup(
         "Topic :: Software Development :: Debuggers",
         "Topic :: Software Development :: Libraries :: Python Modules",
     ],
-    packages=["frida_tools"],
+    packages=["telco_tools"],
     package_data={
-        "frida_tools": agents,
+        "telco_tools": agents,
     },
     entry_points={
         "console_scripts": [
-            "frida = frida_tools.repl:main",
-            "frida-ls-devices = frida_tools.lsd:main",
-            "frida-ps = frida_tools.ps:main",
-            "frida-kill = frida_tools.kill:main",
-            "frida-ls = frida_tools.ls:main",
-            "frida-rm = frida_tools.rm:main",
-            "frida-pull = frida_tools.pull:main",
-            "frida-push = frida_tools.push:main",
-            "frida-discover = frida_tools.discoverer:main",
-            "frida-trace = frida_tools.tracer:main",
-            "frida-itrace = frida_tools.itracer:main",
-            "frida-join = frida_tools.join:main",
-            "frida-create = frida_tools.creator:main",
-            "frida-compile = frida_tools.compiler:main",
-            "frida-apk = frida_tools.apk:main",
+            "telco = telco_tools.repl:main",
+            "telco-ls-devices = telco_tools.lsd:main",
+            "telco-ps = telco_tools.ps:main",
+            "telco-kill = telco_tools.kill:main",
+            "telco-ls = telco_tools.ls:main",
+            "telco-rm = telco_tools.rm:main",
+            "telco-pull = telco_tools.pull:main",
+            "telco-push = telco_tools.push:main",
+            "telco-discover = telco_tools.discoverer:main",
+            "telco-trace = telco_tools.tracer:main",
+            "telco-itrace = telco_tools.itracer:main",
+            "telco-join = telco_tools.join:main",
+            "telco-create = telco_tools.creator:main",
+            "telco-compile = telco_tools.compiler:main",
+            "telco-apk = telco_tools.apk:main",
         ]
     },
 )

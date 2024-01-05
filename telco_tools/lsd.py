@@ -1,9 +1,9 @@
 def main() -> None:
     import functools
 
-    import frida
+    import telco
 
-    from frida_tools.application import ConsoleApplication
+    from telco_tools.application import ConsoleApplication
 
     class LSDApplication(ConsoleApplication):
         def _usage(self) -> str:
@@ -14,7 +14,7 @@ def main() -> None:
 
         def _start(self) -> None:
             try:
-                devices = frida.enumerate_devices()
+                devices = telco.enumerate_devices()
             except Exception as e:
                 self._update_status(f"Failed to enumerate devices: {e}")
                 self._exit(1)
@@ -76,7 +76,7 @@ def main() -> None:
                 )
             self._exit(0)
 
-    def compare_devices(a: frida.core.Device, b: frida.core.Device) -> int:
+    def compare_devices(a: telco.core.Device, b: telco.core.Device) -> int:
         a_score = score(a)
         b_score = score(b)
         if a_score == b_score:
@@ -96,7 +96,7 @@ def main() -> None:
             else:
                 return 0
 
-    def score(device: frida.core.Device) -> int:
+    def score(device: telco.core.Device) -> int:
         type = device.type
         if type == "local":
             return 3

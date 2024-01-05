@@ -41,9 +41,9 @@ def build(inputs, output_js, priv_dir):
         )
         raise EnvironmentError(message)
 
-    frida_compile = Path("node_modules") / ".bin" / ("frida-compile" + script_suffix())
+    telco_compile = Path("node_modules") / ".bin" / ("telco-compile" + script_suffix())
 
-    subprocess.run([frida_compile, entrypoint, "-c", "-o", output_js], cwd=priv_dir, check=True)
+    subprocess.run([telco_compile, entrypoint, "-c", "-o", output_js], cwd=priv_dir, check=True)
 
 
 def script_suffix():

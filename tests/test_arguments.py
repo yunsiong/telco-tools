@@ -1,7 +1,7 @@
 import unittest
 
-from frida_tools.application import ConsoleApplication
-from frida_tools.kill import KillApplication
+from telco_tools.application import ConsoleApplication
+from telco_tools.kill import KillApplication
 
 
 class DummyConsoleApplication(ConsoleApplication):

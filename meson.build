@@ -1,4 +1,4 @@
-project('frida-tools', 'c', version: '1.0.0')
+project('telco-tools', 'c', version: '1.0.0')
 
 python = get_option('python')
 if python == ''
@@ -18,9 +18,9 @@ python_version = result.stdout()
 python_name = 'python' + python_version
 python_site_packages = get_option('libdir') / python_name / 'site-packages'
 
-pkgdir = python_site_packages / 'frida_tools'
+pkgdir = python_site_packages / 'telco_tools'
 
 subdir('agents')
-subdir('frida_tools')
+subdir('telco_tools')
 subdir('scripts')
 subdir('completions')

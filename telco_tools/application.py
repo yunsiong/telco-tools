@@ -14,15 +14,15 @@ import time
 from types import FrameType
 from typing import Any, Callable, List, Optional, Tuple, TypeVar, Union
 
-import _frida
+import _telco
 
 if platform.system() == "Windows":
     import msvcrt
 
 import colorama
-import frida
+import telco
 
-from frida_tools.reactor import Reactor
+from telco_tools.reactor import Reactor
 
 AUX_OPTION_PATTERN = re.compile(r"(.+)=\((string|bool|int)\)(.+)")
 
@@ -31,7 +31,7 @@ TargetType = Union[List[str], re.Pattern, int, str]
 TargetTypeTuple = Tuple[str, TargetType]
 
 
-def input_with_cancellable(cancellable: frida.Cancellable) -> str:
+def input_with_cancellable(cancellable: telco.Cancellable) -> str:
     if platform.system() == "Windows":
         result = ""
         done = False
@@ -81,7 +81,7 @@ def input_with_cancellable(cancellable: frida.Cancellable) -> str:
 def await_enter(reactor: Reactor) -> None:
     try:
         input_with_cancellable(reactor.ui_cancellable)
-    except frida.OperationCancelledError:
+    except telco.OperationCancelledError:
         pass
     except KeyboardInterrupt:
         print("")
@@ -91,15 +91,15 @@ def await_ctrl_c(reactor: Reactor) -> None:
     while True:
         try:
             input_with_cancellable(reactor.ui_cancellable)
-        except frida.OperationCancelledError:
+        except telco.OperationCancelledError:
             break
         except KeyboardInterrupt:
             break
 
 
-def deserialize_relay(value: str) -> frida.Relay:
+def deserialize_relay(value: str) -> telco.Relay:
     address, username, password, kind = value.split(",")
-    return frida.Relay(address, username, password, kind)
+    return telco.Relay(address, username, password, kind)
 
 
 def create_target_parser(target_type: str) -> Callable[[str], TargetTypeTuple]:
@@ -123,7 +123,7 @@ class ConsoleState:
 
 class ConsoleApplication:
     """
-    ConsoleApplication is the base class for all of Frida tools, which contains
+    ConsoleApplication is the base class for all of Telco tools, which contains
     the common arguments of the tools. Each application can implement one or
     more of several methods that can be inserted inside the flow of the
     application.
@@ -161,14 +161,14 @@ class ConsoleApplication:
         self._initialize_target_arguments(parser, options)
 
         self._reactor = Reactor(run_until_return, on_stop)
-        self._device: Optional[frida.core.Device] = None
+        self._device: Optional[telco.core.Device] = None
         self._schedule_on_output = lambda pid, fd, data: self._reactor.schedule(lambda: self._on_output(pid, fd, data))
         self._schedule_on_device_lost = lambda: self._reactor.schedule(self._on_device_lost)
         self._spawned_pid: Optional[int] = None
         self._spawned_argv = None
-        self._selected_spawn: Optional[_frida.Spawn] = None
+        self._selected_spawn: Optional[_telco.Spawn] = None
         self._target_pid: Optional[int] = None
-        self._session: Optional[frida.core.Session] = None
+        self._session: Optional[telco.core.Session] = None
         self._schedule_on_session_detached = lambda reason, crash: self._reactor.schedule(
             lambda: self._on_session_detached(reason, crash)
         )
@@ -195,12 +195,12 @@ class ConsoleApplication:
             self._device_type = options.device_type
             self._host = options.host
             if all([x is None for x in [self._device_id, self._device_type, self._host]]):
-                self._device_id = os.environ.get("FRIDA_DEVICE")
+                self._device_id = os.environ.get("TELCO_DEVICE")
                 if self._device_id is None:
-                    self._host = os.environ.get("FRIDA_HOST")
-            self._certificate = options.certificate or os.environ.get("FRIDA_CERTIFICATE")
-            self._origin = options.origin or os.environ.get("FRIDA_ORIGIN")
-            self._token = options.token or os.environ.get("FRIDA_TOKEN")
+                    self._host = os.environ.get("TELCO_HOST")
+            self._certificate = options.certificate or os.environ.get("TELCO_CERTIFICATE")
+            self._origin = options.origin or os.environ.get("TELCO_ORIGIN")
+            self._token = options.token or os.environ.get("TELCO_TOKEN")
             self._keepalive_interval = options.keepalive_interval
             self._session_transport = options.session_transport
             self._stun_server = options.stun_server
@@ -269,7 +269,7 @@ class ConsoleApplication:
         parser.add_argument(
             "-O", "--options-file", help="text file containing additional command line options", metavar="FILE"
         )
-        parser.add_argument("--version", action="version", version=frida.__version__)
+        parser.add_argument("--version", action="version", version=telco.__version__)
 
         return parser
 
@@ -283,12 +283,12 @@ class ConsoleApplication:
         parser.add_argument(
             "-R",
             "--remote",
-            help="connect to remote frida-server",
+            help="connect to remote telco-server",
             action="store_const",
             const="remote",
             dest="device_type",
         )
-        parser.add_argument("-H", "--host", help="connect to remote frida-server on HOST")
+        parser.add_argument("-H", "--host", help="connect to remote telco-server on HOST")
         parser.add_argument("--certificate", help="speak TLS with HOST, expecting CERTIFICATE")
         parser.add_argument("--origin", help="connect to remote server with “Origin” header set to ORIGIN")
         parser.add_argument("--token", help="authenticate with HOST using TOKEN")
@@ -385,7 +385,7 @@ class ConsoleApplication:
         parser.add_argument("args", help="extra arguments and/or target", nargs="*")
 
     def run(self) -> None:
-        mgr = frida.get_device_manager()
+        mgr = telco.get_device_manager()
 
         on_devices_changed = lambda: self._reactor.schedule(self._try_start)
         mgr.on("changed", on_devices_changed)
@@ -400,14 +400,14 @@ class ConsoleApplication:
         if self._started:
             try:
                 self._perform_on_background_thread(self._stop)
-            except frida.OperationCancelledError:
+            except telco.OperationCancelledError:
                 pass
 
         if self._session is not None:
             self._session.off("detached", self._schedule_on_session_detached)
             try:
                 self._perform_on_background_thread(self._session.detach)
-            except frida.OperationCancelledError:
+            except telco.OperationCancelledError:
                 pass
             self._session = None
 
@@ -417,7 +417,7 @@ class ConsoleApplication:
 
         mgr.off("changed", on_devices_changed)
 
-        frida.shutdown()
+        telco.shutdown()
         sys.exit(self._exit_status)
 
     def _add_options(self, parser: argparse.ArgumentParser) -> None:
@@ -490,7 +490,7 @@ class ConsoleApplication:
             return
         if self._device_id is not None:
             try:
-                self._device = frida.get_device(self._device_id)
+                self._device = telco.get_device(self._device_id)
             except:
                 self._update_status(f"Device '{self._device_id}' not found")
                 self._exit(1)
@@ -509,9 +509,9 @@ class ConsoleApplication:
                 options["keepalive_interval"] = self._keepalive_interval
 
             if host is None and len(options) == 0:
-                self._device = frida.get_remote_device()
+                self._device = telco.get_remote_device()
             else:
-                self._device = frida.get_device_manager().add_remote_device(
+                self._device = telco.get_device_manager().add_remote_device(
                     host if host is not None else "127.0.0.1", **options
                 )
         elif self._device_type is not None:
@@ -519,7 +519,7 @@ class ConsoleApplication:
             if self._device is None:
                 return
         else:
-            self._device = frida.get_local_device()
+            self._device = telco.get_local_device()
         self._on_device_found()
         self._device.on("output", self._schedule_on_output)
         self._device.on("lost", self._schedule_on_device_lost)
@@ -560,12 +560,12 @@ class ConsoleApplication:
                     if len(matching) == 1 and matching[0].pid != 0:
                         attach_target = matching[0].pid
                     elif len(matching) > 1:
-                        raise frida.ProcessNotFoundError(
+                        raise telco.ProcessNotFoundError(
                             "ambiguous identifier; it matches: %s"
                             % ", ".join([f"{process.identifier} (pid: {process.pid})" for process in matching])
                         )
                     else:
-                        raise frida.ProcessNotFoundError("unable to find process with identifier '%s'" % target_value)
+                        raise telco.ProcessNotFoundError("unable to find process with identifier '%s'" % target_value)
                 elif target_type == "file":
                     argv = target_value
                     if not self._quiet:
@@ -586,7 +586,7 @@ class ConsoleApplication:
                         self._update_status("Attaching...")
                 spawning = False
                 self._attach(attach_target)
-            except frida.OperationCancelledError:
+            except telco.OperationCancelledError:
                 self._exit(0)
                 return
             except Exception as e:
@@ -614,7 +614,7 @@ class ConsoleApplication:
                 peer_options["relays"] = self._relays
             self._session.setup_peer_connection(**peer_options)
 
-    def _on_script_created(self, script: frida.core.Script) -> None:
+    def _on_script_created(self, script: telco.core.Script) -> None:
         if self._enable_debugger:
             script.enable_debugger()
             self._print("Chrome Inspector server listening on port 9229\n")
@@ -627,11 +627,11 @@ class ConsoleApplication:
         self._reactor.cancel_io()
         self._exit(0)
 
-    def _on_spawn_added(self, spawn: _frida.Spawn) -> None:
+    def _on_spawn_added(self, spawn: _telco.Spawn) -> None:
         thread = threading.Thread(target=self._handle_spawn, args=(spawn,))
         thread.start()
 
-    def _handle_spawn(self, spawn: _frida.Spawn) -> None:
+    def _handle_spawn(self, spawn: _telco.Spawn) -> None:
         pid = spawn.pid
 
         pattern = self._target[1]
@@ -656,12 +656,12 @@ class ConsoleApplication:
             error = e
             self._reactor.schedule(lambda: self._on_spawn_unhandled(spawn, error))
 
-    def _on_spawn_handled(self, spawn: _frida.Spawn) -> None:
+    def _on_spawn_handled(self, spawn: _telco.Spawn) -> None:
         self._spawned_pid = spawn.pid
         self._start()
         self._started = True
 
-    def _on_spawn_unhandled(self, spawn: _frida.Spawn, error: Exception) -> None:
+    def _on_spawn_unhandled(self, spawn: _telco.Spawn, error: Exception) -> None:
         self._update_status(f"Failed to handle spawn: {error}")
         self._exit(1)
 
@@ -801,43 +801,43 @@ class ConsoleApplication:
 
         return result[0]
 
-    def _get_default_frida_dir(self) -> str:
-        return os.path.join(os.path.expanduser("~"), ".frida")
+    def _get_default_telco_dir(self) -> str:
+        return os.path.join(os.path.expanduser("~"), ".telco")
 
-    def _get_windows_frida_dir(self) -> str:
+    def _get_windows_telco_dir(self) -> str:
         appdata = os.environ["LOCALAPPDATA"]
-        return os.path.join(appdata, "frida")
+        return os.path.join(appdata, "telco")
 
     def _get_or_create_config_dir(self) -> str:
-        config_dir = os.path.join(self._get_default_frida_dir(), "config")
+        config_dir = os.path.join(self._get_default_telco_dir(), "config")
         if platform.system() == "Linux":
             xdg_config_home = os.getenv("XDG_CONFIG_HOME", os.path.expanduser("~/.config"))
-            config_dir = os.path.join(xdg_config_home, "frida")
+            config_dir = os.path.join(xdg_config_home, "telco")
         elif platform.system() == "Windows":
-            config_dir = os.path.join(self._get_windows_frida_dir(), "Config")
+            config_dir = os.path.join(self._get_windows_telco_dir(), "Config")
         if not os.path.exists(config_dir):
             os.makedirs(config_dir)
         return config_dir
 
     def _get_or_create_data_dir(self) -> str:
-        data_dir = os.path.join(self._get_default_frida_dir(), "data")
+        data_dir = os.path.join(self._get_default_telco_dir(), "data")
         if platform.system() == "Linux":
             xdg_data_home = os.getenv("XDG_DATA_HOME", os.path.expanduser("~/.local/share"))
-            data_dir = os.path.join(xdg_data_home, "frida")
+            data_dir = os.path.join(xdg_data_home, "telco")
         elif platform.system() == "Windows":
-            data_dir = os.path.join(self._get_windows_frida_dir(), "Data")
+            data_dir = os.path.join(self._get_windows_telco_dir(), "Data")
         if not os.path.exists(data_dir):
             os.makedirs(data_dir)
         return data_dir
 
     def _get_or_create_state_dir(self) -> str:
-        state_dir = os.path.join(self._get_default_frida_dir(), "state")
+        state_dir = os.path.join(self._get_default_telco_dir(), "state")
         if platform.system() == "Linux":
             xdg_state_home = os.getenv("XDG_STATE_HOME", os.path.expanduser("~/.local/state"))
-            state_dir = os.path.join(xdg_state_home, "frida")
+            state_dir = os.path.join(xdg_state_home, "telco")
         elif platform.system() == "Windows":
             appdata = os.environ["LOCALAPPDATA"]
-            state_dir = os.path.join(appdata, "frida", "State")
+            state_dir = os.path.join(appdata, "telco", "State")
         if not os.path.exists(state_dir):
             os.makedirs(state_dir)
         return state_dir
@@ -898,8 +898,8 @@ def insert_options_file_args_in_list(args: List[str], offset: int, new_arg_text:
     return new_args_list
 
 
-def find_device(device_type: str) -> Optional[frida.core.Device]:
-    for device in frida.enumerate_devices():
+def find_device(device_type: str) -> Optional[telco.core.Device]:
+    for device in telco.enumerate_devices():
         if device.type == device_type:
             return device
     return None
